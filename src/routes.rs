@@ -1,9 +1,10 @@
 use axum::extract::{Path, Query, State};
 use axum::response::{IntoResponse, Redirect};
-use axum::routing::get;
+use axum::routing::{get, head};
 use axum::Router;
+use axum::http::header::{HeaderMap, REFERER};
 use axum_extra::extract::cookie::Cookie;
-use axum_extra::extract::CookieJar;
+use axum_extra::extract::{CookieJar};
 use jsonwebtoken::{EncodingKey, Header};
 use openidconnect::core::{CoreAuthenticationFlow, CoreGenderClaim};
 use openidconnect::{
@@ -33,6 +34,7 @@ pub(crate) fn build_routes() -> Router<JitsiState> {
 }
 
 async fn room(
+  headers: HeaderMap,
   Path(room): Path<String>,
   State(state): State<JitsiState>,
   jar: CookieJar,
@@ -73,6 +75,7 @@ async fn room(
   state.store.write().await.insert(
     session_id,
     Session {
+      referer: headers.get(REFERER).expect("Missing Referer").to_str().unwrap().to_string(),
       room,
       csrf_token,
       nonce,
@@ -165,7 +168,7 @@ async fn callback(
     InternalServerError
   })?;
 
-  let mut url = state.config.jitsi_url.join(&session.room).unwrap();
+  let mut url = url::Url::parse(&session.referer).unwrap().join(&session.room).unwrap();
   url.query_pairs_mut().append_pair("jwt", &jwt);
 
   if state.config.skip_prejoin_screen.unwrap_or(true) {

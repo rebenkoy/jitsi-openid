@@ -39,6 +39,7 @@ type Store = Arc<RwLock<HashMap<Uuid, Session>>>;
 pub(crate) struct JitsiSecret(pub(crate) String);
 
 struct Session {
+  referer: String,
   room: String,
   csrf_token: CsrfToken,
   nonce: Nonce,
